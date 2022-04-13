@@ -89,3 +89,37 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+//add mprotect system call to restrict access to read only
+int
+sys_mprotect(void)
+{
+  int i;
+  int n = 0;
+  if(argint(0,&i)<0)
+  {
+    return -1;
+  }
+  if(argint(1, &n) < 0)
+  {
+    return -1;
+  }
+  return mprotect((void *)i, n);
+}
+
+// add munprotect system call to allow read and write access 
+int
+sys_munprotect(void)
+{
+  int i;
+  int n = 0;
+  if(argint(0,&i)<0)
+  {
+    return -1;
+  }
+  if(argint(1,&n)<0)
+  {
+    return -1;
+  }
+  return munprotect((void *)i, n);
+}

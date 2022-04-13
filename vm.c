@@ -392,6 +392,80 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
+// Add mprotect function to make page entry values read only
+int
+mprotect(void *addr, int len)
+{
+  struct proc *current_process = myproc();
+  // if adress is out of memory space return negative
+  if(len <= 0 || (int) addr + len * PGSIZE  > current_process->vlimit)
+  {
+    cprintf("mprotect: the requested address is outside the memory space.");
+    return -1;
+  }
+  if((int)((int) addr % PGSIZE) != 0)
+  {
+    cprintf("Address not aligned with the page ");
+    return -1;
+  }
+  pte_t *pg_entry;
+	uint i;
+
+  // get page entry and remove write access (return negative if outside address space)
+  for(i = (int) addr; i < ((int) addr + len * PGSIZE); i += PGSIZE){
+		pg_entry = walkpgdir(current_process->pgdir,(void*) i,0);
+		if(pg_entry && ((*pg_entry & PTE_U) != 0) && ((*pg_entry &PTE_P) != 0))
+    {
+      // remove write access
+			*pg_entry = *pg_entry & (~PTE_W);
+		}
+		else
+    {
+			return -1;
+		}
+	}
+  // update page directory
+	lcr3(V2P(current_process->pgdir));
+  // return the system call for the function
+	return 22;
+}
+
+// add munprotect function
+int
+munprotect(void *addr,int len)
+{
+  struct proc *current_process = myproc();
+  if(len <= 0 || (int) addr + len * PGSIZE > current_process->vlimit)
+  {
+    cprintf("munprotect: the requested address is outside the memory space.");
+		return -1;
+	}
+  if((int)((int) addr) % PGSIZE != 0)
+  {
+    cprintf("Address not aligned with the page ");
+		return -1;
+	}
+  pte_t *pg_entry;
+	uint i;
+
+  // get page entry and add write access back (return negative if outside address space)
+  for(i = (int) addr; i < ((int) addr + len * PGSIZE); i += PGSIZE)
+  {
+		pg_entry = walkpgdir(current_process->pgdir,(void*) i, 0);
+		if(pg_entry && ((*pg_entry & PTE_U) != 0) && ((*pg_entry &PTE_P) != 0))
+    {
+      // allow read and write access
+			*pg_entry = *pg_entry | PTE_W;
+		}
+		else
+    {
+			return -1;
+		}
+	}
+	lcr3(V2P(current_process->pgdir));
+	return 0;
+}
+
 //PAGEBREAK!
 // Blank page.
 //PAGEBREAK!
